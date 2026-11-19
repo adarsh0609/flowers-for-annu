@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1022" />
+<title>For Annu ♡</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #0b1022; font-family: Georgia, 'Times New Roman', serif; }
+  body { min-height: 100svh; display: grid; place-items: center; overflow: hidden; }
+  .scene { position: relative; width: 100%; height: 100svh; min-height: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 37%, #1b2040 0%, #10152d 48%, #090d1d 100%); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: manipulation; }
+  .message { position: absolute; left: 50%; width: min(88vw, 390px); text-align: center; pointer-events: none; opacity: 0; transform: translate(-50%, 14px); z-index: 2; }
+  .scene.opened .message { animation: appearCentered 1.8s ease 2.7s forwards; }
+  .message.title-message { top: max(60px, calc(env(safe-area-inset-top) + 40px), 10svh); }
+  .message.bottom-message { bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px), 4svh); padding: 12px 16px; border-radius: 20px; background: linear-gradient(180deg, rgba(16,20,42,.78), rgba(12,15,34,.88)); box-shadow: 0 8px 32px rgba(0,0,0,.15); backdrop-filter: blur(5px); }
+  .message h1 { font-weight: 400; font-size: clamp(25px, 6vw, 37px); line-height: 1.25; color: #ffe5ed; margin: 0; letter-spacing: .01em; text-shadow: 0 0 22px #fda7c05c; }
+  .message p { text-align: center; color: #eee0ed; font-size: clamp(12px, 3.35vw, 16px); line-height: 1.4; letter-spacing: .01em; margin: 0; text-shadow: 0 1px 6px #0b1022; }
+  .message p + p { margin-top: 7px; }
+  .message .signature { color: #ffbdd2; margin-top: 7px; font-style: italic; }
+  @media (max-height: 670px) { .message.title-message { top: max(37px, calc(env(safe-area-inset-top) + 18px)); } .message.bottom-message { bottom: max(8px, env(safe-area-inset-bottom)); } .message.bottom-message { padding: 8px 12px; } .message p { font-size: 12px; line-height: 1.27; } .message p + p { margin-top: 5px; } }
+  .tip { position: absolute; top: max(21px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; font: 12px/1.5 system-ui, sans-serif; color: #bcb6d1; opacity: 0; pointer-events: none; }
+  .scene.opened .tip { animation: appear 1.5s ease 4.2s forwards; }
+  .cover { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; background: radial-gradient(ellipse at 50% 45%, #342444 0%, #1b1834 45%, #0b1022 100%); transition: opacity 1.1s ease, visibility 1.1s ease; }
+  .cover::before { content: '✧     ♡     ✧'; font-size: 30px; letter-spacing: 24px; color: #f3abc8; margin-bottom: 34px; text-shadow: 0 0 28px #ff9cc7a6; animation: float 3.2s ease-in-out infinite; }
+  .cover h2 { font-size: clamp(29px, 7.5vw, 48px); font-weight: normal; color: #ffe1ed; line-height: 1.25; margin: 0 0 15px; text-shadow: 0 0 28px #f38abc5e; }
+  .cover p { color: #cfc3da; font-size: 15px; margin: 0 0 37px; }
+  .gift-button { cursor: pointer; border: 1px solid #ffd1e0; border-radius: 999px; padding: 17px 32px; background: linear-gradient(135deg,#f4a6c5,#e687b3); color: #351d36; font: 600 16px system-ui,sans-serif; box-shadow: 0 7px 35px #dd75a84d; transition: transform .2s, box-shadow .2s; }
+  .gift-button:active { transform: scale(.96); }
+  .gift-button:focus-visible { outline: 3px solid white; outline-offset: 5px; }
+  .scene.opened .cover { opacity: 0; visibility: hidden; pointer-events: none; }
+  @keyframes float { 50% { transform: translateY(-9px); } }
+  @keyframes appear { to { opacity: 1; transform: translateY(0); } }
+  @keyframes appearCentered { to { opacity: 1; transform: translate(-50%, 0); } }
+  @media (prefers-reduced-motion: reduce) { .cover::before { animation: none; } .scene.opened .message,.scene.opened .tip { animation: none; opacity: 1; } .scene.opened .message { transform: translate(-50%, 0); } }
+</style>
+</head>
+<body>
+<main class="scene" aria-label="An animated bouquet of pixel flowers, made with love">
+ <canvas id="garden" aria-hidden="true"></canvas>
+ <div class="tip">tap anywhere to see something ✧</div>
+ <div class="message title-message" aria-live="polite">
+  <h1>I love you, Annu ♡</h1>
+ </div>
+ <div class="message bottom-message">
+  <p>Don't forget about me.</p>
+  <p>Even when I'm not around, I hope these flowers (and the petals you dried) remind you of me.</p>
+  <p class="signature">Umma &lt;3</p>
+ </div>
+ <div class="cover" id="cover">
+  <h2>I have something for you ♡</h2>
+  <p>little suprise from me</p>
+  <button class="gift-button" id="openGift" type="button">Open your gift ♡</button>
+ </div>
+</main>
+<script>
+(() => {
+ 'use strict';
+ const canvas = document.getElementById('garden');
+ const ctx = canvas.getContext('2d', { alpha: true });
+ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ let W=0,H=0,DPR=1,unit=3,flowers=[],stars=[],dust=[],bursts=[],start=performance.now(),opened=false;
+ const TAU=Math.PI*2;
+ let seed=2407;
+ const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+ const between=(a,b)=>a+rand()*(b-a);
+ const palettes=[
+  {petal:'#ff8bae',shade:'#c24c88',light:'#ffd0e0',core:'#ffe69a'},
+  {petal:'#d4a3ff',shade:'#8e61c3',light:'#f1d5ff',core:'#ffe5a2'},
+  {petal:'#ffcf76',shade:'#d8874c',light:'#fff0af',core:'#fff7c5'},
+  {petal:'#a1b8ff',shade:'#647bd0',light:'#dae0ff',core:'#ffeaa7'},
+  {petal:'#ff9a8b',shade:'#ca615e',light:'#ffd7bd',core:'#ffe69a'},
+  {petal:'#f4a5db',shade:'#b86ca8',light:'#ffd9f0',core:'#ffeda4'}
+ ];
+ function pixel(x,y,s,color,alpha=1){ ctx.globalAlpha=alpha; ctx.fillStyle=color; ctx.fillRect(Math.round(x/unit)*unit,Math.round(y/unit)*unit,Math.max(unit,s*unit),Math.max(unit,s*unit)); ctx.globalAlpha=1; }
+ function line(x1,y1,x2,y2,color,thickness=1){
+  const steps=Math.ceil(Math.hypot(x2-x1,y2-y1)/(unit*1.3));
+  for(let i=0;i<=steps;i++){ const t=i/Math.max(1,steps);pixel(x1+(x2-x1)*t,y1+(y2-y1)*t,thickness,color); }
+ }
+ function resize(){
+  W=window.innerWidth;H=window.innerHeight;DPR=Math.min(devicePixelRatio||1,2);
+  canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.imageSmoothingEnabled=false;
+  unit=Math.max(2.5,Math.min(W/125,H/190,4.3));
+  seed=2407;
+  // All coordinates use a 400 × 680 reference scene, adjusted to the visible space.
+  flowers=[];
+  const placements=[
+   [-105,-136,.88,0],[-48,-168,1.13,1],[25,-172,.96,2],[93,-145,1.08,3],
+   [-156,-92,.94,4],[-75,-91,1.2,5],[0,-100,1.24,0],[73,-89,1.13,1],[148,-85,.96,2],
+   [-182,-35,.88,3],[-120,-30,1.13,5],[-36,-31,1.18,2],[42,-28,1.08,4],[120,-25,1.2,0],[185,-33,.83,1],
+   [-144,33,.9,2],[-66,27,1.04,3],[8,25,1.14,5],[89,34,.99,4],[157,28,.86,0],
+   [-89,78,.88,4],[-12,80,1.01,1],[70,79,.85,3]
+  ];
+  const scale=Math.min(W/430,H/700,1.4);
+  const centerX=W/2, headY=H*.45;
+  placements.forEach(([px,py,size,pi],i)=>{
+   flowers.push({x:centerX+px*scale,y:headY+py*scale,r:17*size*scale,pal:palettes[pi],phase:between(0,TAU),delay:200+i*66,kind:i%5,scale});
+  });
+  stars=Array.from({length:90},()=>({x:rand()*W,y:rand()*H*.78,r:between(.3,1.2),phase:rand()*TAU}));
+  dust=Array.from({length:24},()=>({x:rand()*W,y:rand()*H,phase:rand()*TAU,speed:between(.2,.75)}));
+ }
+ function petal(cx,cy,rx,ry,angle,p,progress){
+  // Pixel-art oval made of small blocks, with colored edge, lit center, and a tip highlight.
+  const ca=Math.cos(angle),sa=Math.sin(angle);
+  for(let y=-ry;y<=ry;y+=unit){for(let x=-rx;x<=rx;x+=unit){
+   const normalized=(x*x)/(rx*rx)+(y*y)/(ry*ry);
+   if(normalized>1 || normalized < 0)continue;
+   const xx=cx+x*ca-y*sa, yy=cy+x*sa+y*ca;
+   if(Math.hypot(xx-cx,yy-cy)>Math.max(rx,ry)*1.3*progress)continue;
+   let color=normalized>.75?p.shade:(y<-ry*.1?p.light:p.petal);
+   pixel(xx,yy,1,color);
+  }}
+ }
+ function blossom(f,t){
+  const grow=reduced?1:Math.max(0,Math.min(1,(t-f.delay)/850));
+  if(grow<=0)return;
+  const sway=reduced?0:Math.sin(t*.00125+f.phase)*f.scale*3;
+  const x=f.x+sway,y=f.y+Math.cos(t*.001+f.phase)*f.scale*1.9,r=f.r*grow;
+  ctx.save();
+  if(f.kind===1){ // Daisies with finer narrow petals
+   for(let k=0;k<9;k++){const a=k*TAU/9;petal(x+Math.cos(a)*r*.62,y+Math.sin(a)*r*.62,r*.43,r*.76,a+Math.PI/2,f.pal,grow);}
+  }else if(f.kind===3){ // Layered rose
+   for(let k=0;k<7;k++){const a=k*TAU/7;petal(x+Math.cos(a)*r*.49,y+Math.sin(a)*r*.49,r*.65,r*.8,a+Math.PI/2,f.pal,grow);}
+   for(let k=0;k<5;k++){const a=k*TAU/5+.3;petal(x+Math.cos(a)*r*.2,y+Math.sin(a)*r*.2,r*.35,r*.42,a+Math.PI/2,{...f.pal,petal:f.pal.light},grow);}
+  }else{
+   for(let k=0;k<5;k++){const a=k*TAU/5-Math.PI/2;petal(x+Math.cos(a)*r*.62,y+Math.sin(a)*r*.62,r*.68,r*.83,a+Math.PI/2,f.pal,grow);}
+  }
+  const c=r*(f.kind===3?.32:.34);
+  for(let yy=-c;yy<=c;yy+=unit){for(let xx=-c;xx<=c;xx+=unit){if(xx*xx+yy*yy>c*c)continue;pixel(x+xx,y+yy,1,(xx+yy<0)?'#fff1ac':f.pal.core);}}
+  for(let k=0;k<4;k++){const a=k*TAU/4+.3;pixel(x+Math.cos(a)*c*.5,y+Math.sin(a)*c*.5,1,'#a66b58');}
+  pixel(x-r*.9,y-r*.63,1,'#ffffff',.68);
+  ctx.restore();
+ }
+ function leaf(x,y,a,s,tint){
+  const nx=Math.cos(a),ny=Math.sin(a);
+  for(let step=0;step<10;step++){
+   const dist=step*s/9, width=Math.sin(step/9*Math.PI)*s*.23;
+   for(let j=-width;j<=width;j+=unit){pixel(x+nx*dist-ny*j,y+ny*dist+nx*j,1,j>0?tint:'#4fa67b');}
+  }
+  line(x,y,x+nx*s*.85,y+ny*s*.85,'#90c38d');
+ }
+ function stalks(t){
+  const baseX=W*.5,baseY=H*.745;
+  [...flowers].sort((a,b)=>a.y-b.y).forEach((f,i)=>{
+   const grow=reduced?1:Math.max(0,Math.min(1,(t-f.delay+350)/850)); if(!grow)return;
+   const sway=reduced?0:Math.sin(t*.00125+f.phase)*f.scale*3;
+   const bx=baseX+(f.x-baseX)*.12, by=baseY;
+   const topX=f.x+sway,topY=f.y+f.r*.3;
+   const midX=(topX+bx)*.5+(topX-baseX)*.12,midY=(topY+by)*.5;
+   let prevX=bx,prevY=by;
+   const N=55;
+   for(let k=1;k<=N*grow;k++){
+    const q=k/N,ix=(1-q)*(1-q)*bx+2*(1-q)*q*midX+q*q*topX,iy=(1-q)*(1-q)*by+2*(1-q)*q*midY+q*q*topY;
+    line(prevX,prevY,ix,iy,i%3===0?'#72bb82':'#448c6e',i%5===0?1.3:1);prevX=ix;prevY=iy;
+    if(k===23 || k===36){const angle=(i%2===0?-.8:Math.PI+.8)+(f.x-baseX)*.001;leaf(ix,iy,angle,17*f.scale,i%2?'#347e6b':'#3a9271');}
+   }
+  });
+ }
+ function wrapper(t){
+  const x=W*.5, top=H*.57, bottom=H*.77, span=Math.min(W*.36,170);
+  // Back folds of the paper wrapper
+  const polygons=[
+   [[x-5,top+30],[x-span,top-15],[x-span*.48,top+95],[x,bottom]],
+   [[x+5,top+30],[x+span,top-18],[x+span*.49,top+95],[x,bottom]],
+  ];
+  const fillPoly=(points,fill,stroke)=>{ctx.beginPath();ctx.moveTo(...points[0]);points.slice(1).forEach(p=>ctx.lineTo(...p));ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=stroke;ctx.stroke();};
+  fillPoly(polygons[0],'#705a83','#9c7ba3');
+  fillPoly(polygons[1],'#947495','#b891ae');
+  fillPoly([[x-span*.76,top+28],[x,top+80],[x,bottom],[x-span*.40,top+100]],'#af819d','#c9a3b8');
+  fillPoly([[x+span*.75,top+25],[x,top+80],[x,bottom],[x+span*.38,top+102]],'#be91ad','#d9b3c9');
+  // Pixel confetti on the paper
+  for(let k=0;k<13;k++){
+   let iy=top+55+k*8,ix=x+Math.sin(k*2.31)*Math.max(0,span*.45*(1-(iy-top)/(bottom-top)));
+   pixel(ix,iy,1,'#ead1d8',.4);
+  }
+  // Ribbon crossing the bouquet
+  const cy=H*.685;
+  ctx.strokeStyle='#f2a2b9';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(x-span*.34,cy-9);ctx.lineTo(x+span*.28,cy+8);ctx.stroke();
+  ctx.strokeStyle='#d879a4';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(x+span*.3,cy-9);ctx.lineTo(x-span*.27,cy+8);ctx.stroke();
+  fillPoly([[x,cy],[x-29,cy-16],[x-38,cy-2],[x-28,cy+13]],'#ef9fc1','#ffd6e0');
+  fillPoly([[x,cy],[x+29,cy-16],[x+38,cy-2],[x+28,cy+13]],'#ed8fb7','#ffd6e0');
+  fillPoly([[x-7,cy-8],[x+7,cy-8],[x+11,cy+7],[x-9,cy+8]],'#f9c4d8','#ffdfeb');
+  line(x-5,cy+8,x-24,cy+48,'#f4abc7',2);line(x+6,cy+8,x+18,cy+55,'#e78eb3',2);
+ }
+ function twinkles(t){
+  for(const s of stars){let a=reduced?.4:.15+.52*(.5+.5*Math.sin(t*.0018+s.phase)); pixel(s.x,s.y,s.r,'#c9c5f8',a);}
+  for(const d of dust){const x=d.x+Math.sin(t*.0006+d.phase)*7,y=((d.y-t*.009*d.speed+H*2)%H);pixel(x,y,.8,'#ffdcb5',reduced?.25:.1+.3*(.5+.5*Math.sin(t*.002+d.phase)));}
+  // Four-point sparkles around the blooms
+  for(let i=0;i<14;i++){
+   const f=flowers[(i*7)%flowers.length];const x=f.x+Math.sin(i*13)*f.r*2.4,y=f.y+Math.cos(i*8)*f.r*2;
+   const strength=reduced?.5:Math.max(0,Math.sin(t*.002+i*1.9));
+   if(strength>.48){pixel(x,y,1,'#fff3e4',strength);pixel(x-unit*2,y,1,'#ffd7f4',strength*.6);pixel(x+unit*2,y,1,'#ffd7f4',strength*.6);pixel(x,y-unit*2,1,'#ffd7f4',strength*.6);pixel(x,y+unit*2,1,'#ffd7f4',strength*.6);}
+  }
+ }
+ function heart(x,y,size,color,a=1){
+  ctx.fillStyle=color;ctx.globalAlpha=a;const s=size;
+  ctx.beginPath();ctx.moveTo(x,y+s*.88);ctx.bezierCurveTo(x-s*1.5,y+s*.05,x-s*1.1,y-s*.8,x,y-s*.22);ctx.bezierCurveTo(x+s*1.1,y-s*.8,x+s*1.5,y+s*.05,x,y+s*.88);ctx.fill();ctx.globalAlpha=1;
+ }
+ function effects(t){
+  bursts=bursts.filter(b=>t-b.t<1850);
+  bursts.forEach(b=>{const a=1-(t-b.t)/1850;for(let i=0;i<16;i++){const theta=i*TAU/16+b.phase;const distance=(1-a)*betweenDet(i)*65;heart(b.x+Math.cos(theta)*distance,b.y+Math.sin(theta)*distance-(1-a)*25,3.5+2*a,i%2?'#f4a4d4':'#ffe6b9',a);}});
+ }
+ const betweenDet=i=>.6+(i%5)*.13;
+ function frame(now){
+  if (!opened) return;
+  const t=now-start;
+  ctx.clearRect(0,0,W,H);
+  twinkles(t);stalks(t);wrapper(t);
+  for(const f of flowers)blossom(f,t);
+  effects(t);
+  if(!reduced)requestAnimationFrame(frame);
+ }
+ canvas.addEventListener('pointerdown',e=>{if(!opened)return;const t=performance.now()-start;bursts.push({x:e.clientX,y:e.clientY,t,phase:rand()*TAU});if(reduced)frame(performance.now());});
+ document.getElementById('openGift').addEventListener('click',()=>{
+  if(opened)return;
+  opened=true;
+  start=performance.now();
+  document.querySelector('.scene').classList.add('opened');
+  document.getElementById('openGift').blur();
+  requestAnimationFrame(frame);
+ });
+ window.addEventListener('resize',()=>{resize();if(opened && reduced)frame(performance.now());});
+ resize();
+})();
+</script>
+</body>
+</html>
